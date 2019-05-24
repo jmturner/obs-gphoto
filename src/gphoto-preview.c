@@ -348,12 +348,14 @@ static void capture_destroy(void *vptr) {
     gp_context_unref(data->gp_context);
     gp_list_free(data->cam_list);
 
+    #if HAVE_UDEV
     signal_handler_t *sh = gphoto_get_udev_signalhandler();
 
     signal_handler_disconnect(sh, "device_added", capture_camera_added, data);
     signal_handler_disconnect(sh, "device_removed", capture_camera_removed, data);
 
     gphoto_unref_udev();
+    #endif
 
     bfree(vptr);
 }

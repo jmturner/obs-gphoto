@@ -384,12 +384,14 @@ static void timelapse_destroy(void *vptr) {
     data->texture = NULL;
     obs_leave_graphics();
 
+    #if HAVE_UDEV
     signal_handler_t *sh = gphoto_get_udev_signalhandler();
 
     signal_handler_disconnect(sh, "device_added", timelapse_camera_added, data);
     signal_handler_disconnect(sh, "device_removed", timelapse_camera_removed, data);
 
     gphoto_unref_udev();
+    #endif
 
     bfree(vptr);
 }
