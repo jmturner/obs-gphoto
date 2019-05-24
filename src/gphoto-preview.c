@@ -120,7 +120,7 @@ static void capture_init(void *vptr){
     struct preview_data *data = vptr;
     CameraFile *cam_file = NULL;
     const char *image_data = NULL;
-    unsigned long data_size = NULL;
+    unsigned long data_size = 0;
     Image *image = NULL;
     ImageInfo *image_info = AcquireImageInfo();
     ExceptionInfo *exception = AcquireExceptionInfo();
@@ -159,7 +159,7 @@ static void capture_init(void *vptr){
     }
 
     if(image_data){
-        free(image_data);
+        free((void *)image_data);
     }
     if(image_info){
         DestroyImageInfo(image_info);
@@ -356,7 +356,7 @@ static void capture_destroy(void *vptr) {
 
     gphoto_unref_udev();
     #endif
-
+    
     bfree(vptr);
 }
 
