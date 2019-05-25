@@ -1,5 +1,4 @@
-#include <MagickCore/MagickCore.h>
-
+#include "convert-image.h"
 #include "gphoto-preview.h"
 #include "gphoto-utils.h"
 #if HAVE_UDEV
@@ -121,9 +120,6 @@ static void capture_init(void *vptr){
     CameraFile *cam_file = NULL;
     const char *image_data = NULL;
     unsigned long data_size = 0;
-    Image *image = NULL;
-    ImageInfo *image_info = AcquireImageInfo();
-    ExceptionInfo *exception = AcquireExceptionInfo();
 
     if (gp_file_new(&cam_file) < GP_OK) {
             blog(LOG_WARNING, "What???\n");
@@ -140,15 +136,14 @@ static void capture_init(void *vptr){
                     if (gp_file_get_data_and_size(cam_file, &image_data, &data_size) < GP_OK) {
                         blog(LOG_WARNING, "Can't get image data.\n");
                     } else {
-                        image = BlobToImage(image_info, image_data, data_size, exception);
-                        if (exception->severity != UndefinedException) {
-                            CatchException(exception);
-                            blog(LOG_WARNING, "ImageMagic error: %s.\n", (char *)exception->severity);
-                            exception->severity = UndefinedException;
-                        } else {
-                            data->width = (uint32_t)image->magick_columns;
-                            data->height = (uint32_t)image->magick_rows;
-
+                        enum gs_color_format format;
+                        unsigned char *decoded = create_texture_jpeg_data(
+                            image_data, data_size, &format, &data->width, &data->height, NULL
+                        );
+                        if (decoded) {
+                            bfree(decoded);
+                            
+                            blog(LOG_INFO, "gphoto preview captures images of size %d x %d", data->width, data->height);
                             os_event_init(&data->event, OS_EVENT_TYPE_MANUAL);
                             pthread_create(&data->thread, NULL, capture_thread, data);
                         }
@@ -160,15 +155,6 @@ static void capture_init(void *vptr){
 
     if(image_data){
         free((void *)image_data);
-    }
-    if(image_info){
-        DestroyImageInfo(image_info);
-    }
-    if(image){
-        DestroyImageList(image);
-    }
-    if(exception){
-        DestroyExceptionInfo(exception);
     }
 }
 
@@ -356,7 +342,7 @@ static void capture_destroy(void *vptr) {
 
     gphoto_unref_udev();
     #endif
-    
+
     bfree(vptr);
 }
 

@@ -1,4 +1,4 @@
-#include <MagickCore/MagickCore.h>
+#include "convert-image.h"
 
 #include "timelapse.h"
 #include "gphoto-utils.h"
@@ -114,9 +114,6 @@ static void timelapse_init(void *vptr) {
     CameraFilePath camera_file_path;
     char *image_data = NULL;
     unsigned long data_size = 0;
-    Image *image = NULL;
-    ImageInfo *image_info = AcquireImageInfo();
-    ExceptionInfo *exception = AcquireExceptionInfo();
 
     if (gp_file_new(&cam_file) < GP_OK) {
         blog(LOG_WARNING, "What???\n");
@@ -139,32 +136,18 @@ static void timelapse_init(void *vptr) {
                         } else {
                             gp_camera_file_delete(data->camera, camera_file_path.folder, camera_file_path.name,
                                                   data->gp_context);
-                            image = BlobToImage(image_info, image_data, data_size, exception);
-                            if (exception->severity != UndefinedException) {
-                                CatchException(exception);
-                                blog(LOG_WARNING, "ImageMagic error: %s.\n", (char *) exception->severity);
-                                exception->severity = UndefinedException;
-                            } else {
-                                data->width = (uint32_t) image->magick_columns;
-                                data->height = (uint32_t) image->magick_rows;
-
-                                data->texture_data = malloc(data->width * data->height * 4);
-
-                                ExportImagePixels(image, 0, 0, data->width, data->height, "BGRA", CharPixel,
-                                                  data->texture_data,
-                                                  exception);
-                                if (exception->severity != UndefinedException) {
-                                    CatchException(exception);
-                                    blog(LOG_WARNING, "ImageMagic error: %s.\n", (char *) exception->severity);
-                                    exception->severity = UndefinedException;
-                                } else {
-                                    obs_enter_graphics();
-                                    data->texture = gs_texture_create(data->width, data->height, GS_BGRA, 1,
-                                                                      (const uint8_t **)&data->texture_data,
-                                                                      GS_DYNAMIC);
-                                    obs_leave_graphics();
-                                    goto exit;
-                                }
+                            enum gs_color_format format;
+                            unsigned char *decoded = create_texture_jpeg_data(
+                                image_data, data_size, &format, &data->width, &data->height, NULL
+                            );
+                            if (decoded) {
+                                data->texture_data = decoded;
+                                obs_enter_graphics();
+                                data->texture = gs_texture_create(data->width, data->height, GS_BGRA, 1,
+                                                                    (const uint8_t **)&decoded,
+                                                                    GS_DYNAMIC);
+                                obs_leave_graphics();
+                                goto exit;
                             }
                         }
                     }
@@ -183,15 +166,6 @@ static void timelapse_init(void *vptr) {
     if(image_data){
         free(image_data);
     }
-    if(image_info){
-        DestroyImageInfo(image_info);
-    }
-    if(image){
-        DestroyImageList(image);
-    }
-    if(exception){
-        DestroyExceptionInfo(exception);
-    }
 }
 
 static void timelapse_terminate(void *vptr){
@@ -200,7 +174,7 @@ static void timelapse_terminate(void *vptr){
     gp_camera_exit(data->camera, data->gp_context);
     gp_camera_free(data->camera);
     data->camera = NULL;
-    free(data->texture_data);
+    bfree(data->texture_data);
 }
 
 static void timelapse_update(void *vptr, obs_data_t *settings){
@@ -422,9 +396,6 @@ static void timelapse_tick(void *vptr, float seconds) {
     CameraFile *cam_file = NULL;
     char *image_data = NULL;
     unsigned long data_size = 0;
-    Image *image = NULL;
-    ImageInfo *image_info = AcquireImageInfo();
-    ExceptionInfo *exception = AcquireExceptionInfo();
 
     if(data->camera){
         pthread_mutex_lock(&data->camera_mutex);
@@ -452,25 +423,15 @@ static void timelapse_tick(void *vptr, float seconds) {
                             blog(LOG_WARNING, "Can't get image data.\n");
                         } else {
                             gp_camera_file_delete(data->camera, path->folder, path->name, data->gp_context);
-                            image = BlobToImage(image_info, image_data, data_size, exception);
-                            if (exception->severity != UndefinedException) {
-                                CatchException(exception);
-                                blog(LOG_WARNING, "ImageMagic error: %s.\n", (char *) exception->severity);
-                                exception->severity = UndefinedException;
-                            } else {
-                                ExportImagePixels(image, 0, 0, (const size_t) data->width,
-                                                  (const size_t) data->height,
-                                                  "BGRA", CharPixel, data->texture_data,
-                                                  exception);
-                                if (exception->severity != UndefinedException) {
-                                    CatchException(exception);
-                                    blog(LOG_WARNING, "ImageMagic error: %s.\n", (char *) exception->severity);
-                                    exception->severity = UndefinedException;
-                                } else {
-                                    obs_enter_graphics();
-                                    gs_texture_set_image(data->texture, data->texture_data, data->width * 4, false);
-                                    obs_leave_graphics();
-                                }
+                            enum gs_color_format format;
+                            unsigned char *decoded = create_texture_jpeg_data(
+                                image_data, data_size, &format, &data->width, &data->height, data->texture_data
+                            );
+                            
+                            if (decoded) {
+                                obs_enter_graphics();
+                                gs_texture_set_image(data->texture, data->texture_data, data->width * 4, false);
+                                obs_leave_graphics();
                             }
                         }
                     }
@@ -482,15 +443,6 @@ static void timelapse_tick(void *vptr, float seconds) {
 
     if (image_data) {
         free(image_data);
-    }
-    if (image_info) {
-        DestroyImageInfo(image_info);
-    }
-    if (image) {
-        DestroyImageList(image);
-    }
-    if (exception) {
-        DestroyExceptionInfo(exception);
     }
     if (cam_file) {
         //TODO: SIGSEGV here, can't understand why!

@@ -1,8 +1,8 @@
 #include <obs-module.h>
 #include <obs-internal.h>
 #include <gphoto2/gphoto2-camera.h>
-#include <MagickCore/MagickCore.h>
 
+#include "convert-image.h"
 #include "gphoto-preview.h"
 
 static GPPortInfoList		*portinfolist = NULL;
@@ -94,9 +94,6 @@ void gphoto_capture_preview(Camera *camera, GPContext *context, int width, int h
     CameraFile *cam_file = NULL;
     const char *image_data = NULL;
     unsigned long data_size = 0;
-    Image *image = NULL;
-    ImageInfo *image_info = AcquireImageInfo();
-    ExceptionInfo *exception = AcquireExceptionInfo();
 
     if (gp_file_new(&cam_file) < GP_OK){
         blog(LOG_WARNING, "What???\n");
@@ -107,35 +104,17 @@ void gphoto_capture_preview(Camera *camera, GPContext *context, int width, int h
             if (gp_file_get_data_and_size(cam_file, &image_data, &data_size) < GP_OK) {
                 blog(LOG_WARNING, "Can't get image data.\n");
             } else {
-                image = BlobToImage(image_info, image_data, data_size, exception);
-                if (exception->severity != UndefinedException) {
-                    CatchException(exception);
-                    blog(LOG_WARNING, "ImageMagic error: %s.\n", (char *)exception->severity);
-                    exception->severity = UndefinedException;
-                } else {
-                    ExportImagePixels(image, 0, 0, (const size_t)width, (const size_t)height, "BGRA", CharPixel, texture_data,
-                                      exception);
-                    if (exception->severity != UndefinedException) {
-                        CatchException(exception);
-                        blog(LOG_WARNING, "ImageMagic error: %s.\n", (char *)exception->severity);
-                        exception->severity = UndefinedException;
-                    }
-                }
+                enum gs_color_format format;
+                uint32_t width, height;
+                unsigned char *decoded = create_texture_jpeg_data(
+                    image_data, data_size, &format, &width, &height, texture_data
+                );
             }
         }
     }
 
     if(image_data){
         free((void *)image_data);
-    }
-    if(image_info){
-        DestroyImageInfo(image_info);
-    }
-    if(image){
-        DestroyImageList(image);
-    }
-    if(exception){
-        DestroyExceptionInfo(exception);
     }
     if(cam_file){
         //TODO: SIGSEGV here, can't understand why!
@@ -148,9 +127,6 @@ void gphoto_capture(Camera *camera, GPContext *context, int width, int height, u
     CameraFilePath camera_file_path;
     const char *image_data = NULL;
     unsigned long data_size = 0;
-    Image *image = NULL;
-    ImageInfo *image_info = AcquireImageInfo();
-    ExceptionInfo *exception = AcquireExceptionInfo();
 
     if (gp_file_new(&cam_file) < GP_OK){
         blog(LOG_WARNING, "What???\n");
@@ -166,19 +142,11 @@ void gphoto_capture(Camera *camera, GPContext *context, int width, int height, u
                     blog(LOG_WARNING, "Can't get image data.\n");
                 } else {
                     gp_camera_file_delete(camera, camera_file_path.folder, camera_file_path.name, context);
-                    image = BlobToImage(image_info, image_data, data_size, exception);
-                    if (exception->severity != UndefinedException) {
-                        CatchException(exception);
-                        blog(LOG_WARNING, "ImageMagic error: %s.\n", (char *) exception->severity);
-                        exception->severity = UndefinedException;
-                    } else {
-                        ExportImagePixels(image, 0, 0, (const size_t)width, (const size_t)height, "BGRA", CharPixel, texture_data, exception);
-                        if (exception->severity != UndefinedException) {
-                            CatchException(exception);
-                            blog(LOG_WARNING, "ImageMagic error: %s.\n", (char *) exception->severity);
-                            exception->severity = UndefinedException;
-                        }
-                    }
+                    enum gs_color_format format;
+                    uint32_t width, height;
+                    unsigned char *decoded = create_texture_jpeg_data(
+                        image_data, data_size, &format, &width, &height, texture_data
+                    );
                 }
             }
         }
@@ -186,15 +154,6 @@ void gphoto_capture(Camera *camera, GPContext *context, int width, int height, u
 
     if(image_data){
         free((void *)image_data);
-    }
-    if(image_info){
-        DestroyImageInfo(image_info);
-    }
-    if(image){
-        DestroyImageList(image);
-    }
-    if(exception){
-        DestroyExceptionInfo(exception);
     }
     if(cam_file){
         //TODO: SIGSEGV here, can't understand why!

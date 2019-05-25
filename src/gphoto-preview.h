@@ -17,7 +17,6 @@ struct preview_data {
     uint32_t width;
     uint32_t height;
 
-
     CameraList *cam_list;
     Camera *camera;
     GPContext *gp_context;
