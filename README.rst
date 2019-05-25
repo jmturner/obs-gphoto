@@ -11,7 +11,7 @@ Allows connect DSLR cameras with obs-studio through gPhoto on Linux. At now test
 
 
 ------
-v0.3.0
+v0.4.0
 ------
 
 MODULES
@@ -29,7 +29,7 @@ REQUIREMENTS
 
 * *obs-studio*
 * *libgphoto >= 2.5.10*
-* *libmagickcore*
+* *libjpeg-turbo* (probably already installed on your distribution)
 * *libudev(optional)*
 
 INSTALLATION
@@ -38,20 +38,19 @@ INSTALLATION
 For ArchLinux:
 --------------
 
-    there is a `package in AUR`_.
-        .. _`package in AUR`: https://aur.archlinux.org/packages/obs-gphoto/
-        
+Use the included PKGBUILD
+
 
 For installation from source:
 =============================
 
 Fedora: 
 -------
-Install requirements: :code:`dnf install libgphoto2-devel  obs-studio-devel ImageMagick-devel systemd-devel`
+Install requirements: :code:`dnf install libgphoto2-devel obs-studio-devel libjpeg-devel systemd-devel`
 
 General:
 --------
-* :code:`git clone https://github.com/Atterratio/obs-gphoto`
+* :code:`git clone https://github.com/dunkelstern/obs-gphoto`
 * :code:`cd obs-gphoto`
 * :code:`cmake . -DSYSTEM_INSTALL=0` for local installation or :code:`cmake . -DSYSTEM_INSTALL=1` for system installation
 * :code:`make`
