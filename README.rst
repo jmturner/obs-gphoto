@@ -2,17 +2,13 @@
 obs-gphoto
 ==========
 
-Allows connect DSLR cameras with obs-studio through gPhoto on Linux. At now tested only Canon cameras.
-
-.. image:: https://img.shields.io/badge/Donate-PayPal-blue.svg
-    :target: https://www.paypal.me/AeternusAtterratio
-.. image:: https://img.shields.io/badge/Donate-YaMoney-orange.svg
-    :target: https://money.yandex.ru/to/410011005689134
-
+Allows connecting DSLR cameras with obs-studio through gPhoto on Linux. At now tested only Canon cameras.
 
 ------
-v0.4.0
+v0.5.0
 ------
+
+Forked from https://github.com/dunkelstern/obs-gphoto (ibjpeg-turbo instead of ImageMagick), includes fixes from https://github.com/Doeme/obs-gphoto (fix_too_eager_termination, fix_double_free_on_terminate).
 
 MODULES
 =======
@@ -50,7 +46,7 @@ Install requirements: :code:`dnf install libgphoto2-devel obs-studio-devel libjp
 
 General:
 --------
-* :code:`git clone https://github.com/dunkelstern/obs-gphoto`
+* :code:`git clone https://github.com/maaleske/obs-gphoto`
 * :code:`cd obs-gphoto`
 * :code:`cmake . -DSYSTEM_INSTALL=0` for local installation or :code:`cmake . -DSYSTEM_INSTALL=1` for system installation
 * :code:`make`
